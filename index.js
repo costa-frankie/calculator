@@ -3,216 +3,265 @@ const calculator = {
     "operation": null, 
     "secondNumber": null,
     "result": null,
-    "addingToExistingNumber": false, //affects how number buttons behave (append to or replace display),
-    "showingFinalResult": false, //continue calculation or start fresh 
+    "addingToExistingNumber": false, 
+    "showingFinalResult": false,
+
+    "DIVIDE_BY_ZERO_MESSAGE": "ERROR",
+    "DECIMAL_PLACES": 5,
+    
     "operations": {
-        add: (a,b) => {
-            return a + b }, 
-        subtract: (a,b) => { return a - b },
-        multiply: (a,b) => { return a * b },
-        divide: (a,b) => {return a/b },
+        add: (a,b) => a + b, 
+        subtract: (a,b) => a - b,
+        multiply: (a,b) => a * b,
+        divide: (a,b) => a/b,
     },
+
+    detectState() {
+        if (this.showingFinalResult) return "Displaying final result";
+        if (this.isEmpty()) return "Awaiting first number";
+        if (this.firstNumber && this.addingToExistingNumber && !this.operation) return "Adding to first number";
+        if (this.firstNumber && this.operation && !this.secondNumber) return "Awaiting second number";
+        if (this.firstNumber && this.operation && this.secondNumber && this.addingToExistingNumber) return "Adding to second number";
+    },
+
+    isEmpty() {
+        return !this.firstNumber && !this.addingToExistingNumber && !this.operation && !this.secondNumber;
+    },
+
     calculate(a, op, b) {
         this.operation = op;
         const operationFunc = this.operations[op];
-        console.log(`Op: ${this.operation}, 2nd: ${this.secondNumber}, Type: ${typeof(this.secondNumber)}`);
         if (this.operation === "divide" && this.secondNumber === "0") {
-            this.updateDisplay("You can't do dat!");
-            this.result = null;
-            this.firstNumber = null;
-            this.secondNumber = null;
-            this.operation = null;
-            this.addingToExistingNumber = false; 
-            this.showingFinalResult = false;
+            this.handleDivisionByZero();
             return;
         }
-        else if (operationFunc) {
-            let aNumber = parseFloat(a);
-            let bNumber = parseFloat(b); 
 
-            this.result = this.firstNumber = operationFunc(aNumber,bNumber);
-            this.secondNumber = null;
-            this.updateDisplay(this.result);
-            return;
-        } else {
-        throw new Error(`Unknown operation ${op}`);
+        if (!operationFunc) { 
+            throw new Error(`Unknown operation ${op}`);
         }
+
+        const aNumber = parseFloat(a);
+        const bNumber = parseFloat(b); 
+
+        this.result = this.firstNumber = operationFunc(aNumber,bNumber);
+        this.secondNumber = null;
+        this.updateDisplay(this.result);
     },
+
+    handleDivisionByZero() {
+        this.updateDisplay(this.DIVIDE_BY_ZERO_MESSAGE);
+        this.resetCalculator();
+    },
+    resetCalculator() {
+        this.result = null;
+        this.firstNumber = null;
+        this.secondNumber = null;
+        this.operation = null;
+        this.addingToExistingNumber = false;
+        this.showingFinalResult = false;
+    },
+
     handleInput(buttonId, buttonType) { 
         if (buttonId === "clear") {
             this.clearDisplay("");
             return;
         }
 
-        let currentState = this.detectState();
-
-        if (currentState === "Awaiting first number") {
-
-            if (buttonType === "number") {
-                this.firstNumber = display.value = buttonId;
-                
-                this.addingToExistingNumber = true;
-                this.showingFinalResult = false;
-            } else if (buttonType === "operation") {
-                // don't really need to handle this right now, could show the current op in the display at some point in future
-            } else if (buttonType === "equals") {
-                //don't really need to handle this right now
-            } else if (buttonType === "dot") {
-                this.firstNumber = "0.";
-                this.addingToExistingNumber = true;
-                this.showingFinalResult = false;
-                this.updateDisplay(this.firstNumber);
-            } else if (buttonType === "delete") {
-                //don't reallty need to handle this right now
-            }
-        } else if (currentState === "Adding to first number") {
-            if (buttonType ==="number") {
-                this.firstNumber = (this.firstNumber === null ? buttonId : this.firstNumber += buttonId);
-                display.value = this.firstNumber;
-                this.addingToExistingNumber = true;
-
-            } else if (buttonType === "operation") {
-                this.operation = buttonId;
-                this.addingToExistingNumber = false;
-            } else if (buttonType === "equals") {
-                //don't really need to handle this right now
-            } else if (buttonType === "dot") {
-                if(!this.firstNumber.includes(".")) {
-                    this.firstNumber += ".";
-                    this.updateDisplay(this.firstNumber);
-                }
-            } else if (buttonType === "delete") {
-                this.firstNumber = this.firstNumber.slice(0, -1);
-                console.log(this.firstNumber);
-                this.updateDisplay(this.firstNumber);
-            }
-
-        } else if (currentState === "Awaiting second number") {
-            if (buttonType ==="number") {
-                this.secondNumber = display.value = buttonId;
-                this.addingToExistingNumber = true;
-            } else if (buttonType === "operation") {
-                this.operation = buttonId;
-            } else if (buttonType === "equals") {
-                //don't really need to handle this right now
-            } else if (buttonType === "dot") {
-                this.secondNumber = "0.";
-                this.addingToExistingNumber = true;
-                this.updateDisplay(this.secondNumber);
-            } else if (buttonType === "delete") {
-                //don't reallty need to handle this right now
-            }
-        } else if (currentState === "Adding to second number") {
-            if (buttonType ==="number") {
-                this.secondNumber += buttonId;
-                display.value = this.secondNumber;
-            } else if (buttonType === "operation") {
-                //calculate the result 
-                this.calculate(this.firstNumber, this.operation, this.secondNumber);
-
-                //set the operation for the next equation
-                this.operation = buttonId;
-                this.showingFinalResult = false;
-                this.addingToExistingNumber = false;
-            } else if (buttonType === "equals") {
-                this.calculate(this.firstNumber, this.operation, this.secondNumber);
-                this.operation = null;
-                this.showingFinalResult = true;
-                
-            } else if (buttonType === "dot") {
-                if(!this.secondNumber.includes(".")) {
-                    this.secondNumber+= ".";
-                    this.updateDisplay(this.secondNumber);
-                }
-            } else if (buttonType === "delete") {
-                this.secondNumber = this.secondNumber.slice(0, -1);
-                this.updateDisplay(this.secondNumber);
-            }
-
-        } else if (currentState === "Displaying final result") {
-            if (buttonType === "number") {
-                this.firstNumber = display.value = buttonId;
-                this.addingToExistingNumber = true;
-                this.showingFinalResult = false;
-                this.result = null;
-                this.secondNumber = null;
-                this.operation = null;
-            }
-
-            else if (buttonType === "operation") {
-                this.operation = buttonId;
-                console.log(`First number: ${this.firstNumber}`);
-                this.addingToExistingNumber = false;
-                this.showingFinalResult = false;
-                
-            }
-
-            else if (buttonType === "equals") {
-                //don't need to handle right now 
-            }
-            else if (buttonType === "dot") {
-                this.firstNumber = "0.";
-                this.addingToExistingNumber = true;
-                this.showingFinalResult = false;
-                this.result = null; 
-                this.secondNumber = null;
-                this.operation = null; 
-                this.updateDisplay(this.firstNumber);
-            }
+        const currentState = this.detectState();
+        const stateHandlers = {
+            "Awaiting first number": () => this.handleAwaitingFirstNumber(buttonId, buttonType),
+            "Adding to first number": () => this.handleAddingToFirstNumber(buttonId, buttonType),
+            "Awaiting second number": () => this.handleAwaitingSecondNumber(buttonId, buttonType),
+            "Adding to second number": () => this.handleAddingToSecondNumber(buttonId, buttonType),
+            "Displaying final result": () => this.handleDisplayingFinalResult(buttonId, buttonType)
         }
-        currentState = this.detectState();
-        console.log(`AFTER: State: ${currentState} 1st: ${this.firstNumber}, 2nd: ${this.secondNumber}, Op: ${this.operation}, adding2?: ${this.addingToExistingNumber}, final?" ${this.showingFinalResult}`);
+
+        const handler = stateHandlers[currentState];
+        if(handler) handler();
     },
-    detectState() {
-        if (this.showingFinalResult) {
-            return "Displaying final result";
-        }
-        if (!this.firstNumber && !this.addingToExistingNumber && !this.operation && !this.secondNumber) {
-            return "Awaiting first number";
-        }
-        if (this.firstNumber && this.addingToExistingNumber && !this.operation && !this.secondNumber) {
-            return "Adding to first number";
-        } 
-        if (this.firstNumber && this.operation && !this.secondNumber) {
-            return("Awaiting second number");
-        } 
-        if (this.firstNumber && this.operation && this.secondNumber && this.addingToExistingNumber) {
-            return("Adding to second number");
+
+    handleAwaitingFirstNumber(buttonId, buttonType) {
+            if (buttonType === "number") {
+                this.setFirstNumber(buttonId);
+            } else if (buttonType === "dot") {
+                this.setFirstNumber("0.");
+            }
+    },
+
+    handleAddingToFirstNumber(buttonId, buttonType) {
+        switch (buttonType) {
+            case "number": 
+                this.appendToFirstNumber(buttonId);
+                break; 
+            case "operation":
+                this.setOperation(buttonId);
+                break;
+            case "dot":
+                this.addDecimalToFirstNumber();
+                break;
+            case "delete":
+                this.deleteFromFirstNumber();
+                break;
+
         }
     },
+
+    handleAwaitingSecondNumber(buttonId, buttonType) {
+        if (buttonType ==="number") {
+            this.setSecondNumber(buttonId);
+        } else if (buttonType === "operation") {
+            this.setOperation(buttonId);
+        } else if (buttonType === "dot") {
+            this.setSecondNumber("0.");
+        }
+    }, 
+
+    handleAddingToSecondNumber(buttonId, buttonType) {
+        switch(buttonType) {
+            case "number":
+                this.appendToSecondNumber(buttonId);
+                break;
+            case "operation":
+                this.calculateAndContinue(buttonId);
+                break;
+            case "equals":
+                this.calculateFinal();
+                break;
+            case "dot":
+                this.addDecimalToSecondNumber();
+                break; 
+            case "delete": 
+                this.deleteFromSecondNumber();
+                break;
+        }
+    }, 
+
+    handleDisplayingFinalResult(buttonId, buttonType) {
+        switch (buttonType) {
+            case "number":
+                this.startFresh(buttonId);
+                break;
+            case "operation":
+                this.continueFromResult(buttonId);
+                break;
+            case "dot": 
+                this.startFreshWithDecimal();
+                break;
+        }
+    },
+
+    setFirstNumber(value) {
+        this.firstNumber = value; 
+        this.addingToExistingNumber = true; 
+        this.showingFinalResult = false; 
+        this.updateDisplay(this.firstNumber);
+    },
+
+    appendToFirstNumber(digit) {
+        this.firstNumber = this.firstNumber === null ? digit : this.firstNumber + digit;
+        this.addingToExistingNumber = true; 
+        this.updateDisplay(this.firstNumber);
+    },
+
+    setSecondNumber(value) {
+        this.secondNumber = value; 
+        this.addingToExistingNumber = true; 
+        this.updateDisplay(this.secondNumber);
+    },
+
+    appendToSecondNumber(digit) {
+        this.secondNumber += digit; 
+        this.updateDisplay(this.secondNumber);
+    },
+
+    setOperation(op) {
+        this.operation = op; 
+        this.addingToExistingNumber = false; 
+    },
+
+    addDecimalToFirstNumber() {
+        if (!this.firstNumber.includes(".")) {
+            this.firstNumber += ".";
+            this.updateDisplay(this.firstNumber);
+        }
+    },
+
+    addDecimalToSecondNumber() {
+        if (!this.secondNumber.includes(".")) {
+            this.secondNumber += ".";
+            this.updateDisplay(this.secondNumber);
+        }
+    },
+
+    deleteFromFirstNumber() {
+        this.firstNumber = this.firstNumber.slice(0, -1);
+        this.updateDisplay(this.firstNumber);
+    },
+
+    deleteFromSecondNumber() {
+        this.secondNumber = this.secondNumber.slice(0, -1);
+        this.updateDisplay(this.secondNumber);
+    },
+
+    calculateAndContinue(nextOperation) {
+        this.calculate(this.firstNumber, this.operation, this.secondNumber);
+        this.setOperation(nextOperation);
+        this.showingFinalResult = false;
+    },
+
+    calculateFinal() {
+        this.calculate(this.firstNumber, this.operation, this.secondNumber);
+        this.operation = null;
+        this.showingFinalResult = true;
+    },
+
+    startFresh(digit) {
+        this.clearState();
+        this.setFirstNumber(digit);
+    },
+
+    continueFromResult(operation) {
+        this.setOperation(operation);
+        this.showingFinalResult = false; 
+    },
+
+    startFreshWithDecimal() {
+        this.clearState();
+        this.setFirstNumber("0.");
+    },
+
+    clearState() {
+        this.result = null; 
+        this.secondNumber = null; 
+        this.operation = null;
+    },
+
     updateDisplay(displayOutput) {
-        if(displayOutput === "") {
-            display.value = "";
+        const display = document.querySelector('#expression');
+
+        if(displayOutput === "" || displayOutput === this.DIVIDE_BY_ZERO_MESSAGE || displayOutput === "0.") {
+            display.innerText = displayOutput;
             return;
         }
-        if(displayOutput === "You can't do dat!") {
-            display.value = displayOutput;
-            return;
-        }
-        if(displayOutput === "0.") {
-            display.value = "0.";
-            return;
-        } 
-        
+
         if(typeof displayOutput === "string") {
-            display.value = displayOutput;
+            display.innerText = displayOutput;
             return;
         }
         
         if(typeof displayOutput === "number") {
         this.result = displayOutput;
-        let roundedNumber = parseFloat(displayOutput.toFixed(5));
-        display.value = roundedNumber; //limit to 5 after decimal;
+        const roundedNumber = parseFloat(displayOutput.toFixed(this.DECIMAL_PLACES));
+        display.innerText = roundedNumber; //limit to 5 after decimal;
         return;
         }
     },
+
     clearDisplay() {
-        this.firstNumber = null;
-        this.operation = null;
-        this.secondNumber = null;
-        this.result = null;
+        this.resetCalculator();
         this.updateDisplay("");
     },
+
     handleKeyPress(key) {
         const keyMappings = {
             '0': {id: '0', type: 'number'},
@@ -234,9 +283,12 @@ const calculator = {
             '=': {id: 'equals', type: 'equals'},
             'Enter': {id: 'equals', type: 'equals'},
         };
-        let mapping = (key >= '0' && key <= '9') ? keyMappings[parseInt(key)] : keyMappings[key];        
-        this.handleInput(mapping.id, mapping.type);
-    }
+
+        const mapping = keyMappings[key];  
+        if (mapping) {
+            this.handleInput(mapping.id, mapping.type);
+        }
+    },
 }
 
 const buttons = document.querySelectorAll('.btn');
@@ -246,12 +298,10 @@ buttons.forEach(element => {
     });
 });
 
-const display = document.querySelector('#expression');
-
 document.addEventListener('keydown', (event) => {
     const pressedKey = event.key;
-    const opKeys = ['-', '+', '*', '/', '=','.', 'Enter'];
-    if((pressedKey >= '0' && pressedKey <= '9') || opKeys.includes(pressedKey)) {
+    const validOpKeys = ['-', '+', '*', '/', '=','.', 'Enter'];
+    if((pressedKey >= '0' && pressedKey <= '9') || validOpKeys.includes(pressedKey)) {
         calculator.handleKeyPress(pressedKey);
     }
 });
